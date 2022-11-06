@@ -10,6 +10,12 @@ type Inquirer = {
   prompt: PromptModule;
 };
 
+export type JiraLocation =
+  | 'pre-type'
+  | 'pre-description'
+  | 'post-description'
+  | 'post-body';
+
 export type EngineOptions = {
   // type
   defaultType?: string;
@@ -19,6 +25,9 @@ export type EngineOptions = {
   jiraOptional?: boolean;
   jiraPrefix?: string;
   jiraMode?: boolean;
+  jiraPrepend?: string;
+  jiraAppend?: string;
+  jiraLocation?: JiraLocation;
   // scope
   customScope?: boolean;
   defaultScope?: string;
@@ -35,6 +44,20 @@ export type EngineOptions = {
   skipBreaking?: boolean;
   // isIssueAffected, issues
   defaultIssues?: string;
+};
+
+export type PromptAnswers = {
+  type: string;
+  jira?: string;
+  scope?: string;
+  customScope?: string;
+  body?: string;
+  isBreaking?: boolean;
+  breaking?: boolean;
+  isIssueAffected?: boolean;
+  issuesBody?: string;
+  issues?: string;
+  subject: string;
 };
 
 function generateChoices(types: Types) {
@@ -179,8 +202,7 @@ function engine(options: Partial<EngineOptions> = defaults) {
           {
             type: 'confirm',
             name: 'isBreaking',
-            message:
-              'You do know that this will bump the major version, are you sure?',
+            message: 'This will bump the major version, are you sure?',
             default: false,
             when: function (answers) {
               return answers.isBreaking;
@@ -225,10 +247,11 @@ function engine(options: Partial<EngineOptions> = defaults) {
             default: defaultIssues ? defaultIssues : undefined,
           },
         ])
-        .then(async answers => {
+        .then(async (answers: PromptAnswers) => {
           console.log('answers', answers);
         })
         .catch(e => {
+          // TODO: Understand if this can throw an error and what we should do with it.
           console.log(e);
         });
     },
