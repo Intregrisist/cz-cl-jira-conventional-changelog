@@ -3,7 +3,7 @@ import map from 'lodash/map';
 import reduce from 'lodash/reduce';
 import padEnd from 'lodash/padEnd';
 
-import defaults from './defaults';
+import {DefaultEngineOptions} from './constants';
 import {Types} from './types';
 
 type Inquirer = {
@@ -17,6 +17,10 @@ export type JiraLocation =
   | 'post-body';
 
 export type EngineOptions = {
+  // other
+  maxHeaderWidth: number;
+  maxBodyWidth: number;
+
   // type
   defaultType?: string;
   types: Types;
@@ -34,7 +38,6 @@ export type EngineOptions = {
   scopes?: string[];
   skipScope?: boolean;
   // subject
-  maxHeaderWidth?: number;
   exclamationMark?: boolean;
 
   // body
@@ -53,7 +56,7 @@ export type PromptAnswers = {
   customScope?: string;
   body?: string;
   isBreaking?: boolean;
-  breaking?: boolean;
+  breaking?: string;
   isIssueAffected?: boolean;
   issuesBody?: string;
   issues?: string;
@@ -72,7 +75,7 @@ function generateChoices(types: Types) {
   }));
 }
 
-function engine(options: Partial<EngineOptions> = defaults) {
+function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
   const {
     defaultBody,
     defaultJiraIssue,
@@ -89,7 +92,7 @@ function engine(options: Partial<EngineOptions> = defaults) {
     skipScope,
     types,
   } = {
-    ...defaults,
+    ...DefaultEngineOptions,
     ...options,
   };
   const hasScopes = !!scopes?.length;

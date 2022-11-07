@@ -1,11 +1,8 @@
-import defaults from './defaults';
+import {DefaultEngineOptions} from './constants';
 import engine from './engine';
 
-export * from './engine';
-export * from './types';
-
 export default engine({
-  ...defaults,
+  ...DefaultEngineOptions,
   scopes: ['test'],
   skipScope: false,
   customScope: true,
