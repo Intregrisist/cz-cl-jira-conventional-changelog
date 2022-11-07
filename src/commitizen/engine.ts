@@ -1,17 +1,18 @@
-import {PromptModule} from 'inquirer';
+// eslint-disable-next-line node/no-extraneous-import
+import Inquirer from 'inquirer';
+import MaxLengthInputPrompt from 'inquirer-maxlength-input-prompt';
 import map from 'lodash/map';
 import reduce from 'lodash/reduce';
 import padEnd from 'lodash/padEnd';
+import chalk from 'chalk';
+import boxen from 'boxen';
 
 import {DefaultEngineOptions} from './constants';
 import {Types} from './types';
-
-type Inquirer = {
-  prompt: PromptModule;
-};
+import commitGenerator, {getTitle} from './commitGenerator';
 
 export type JiraLocation =
-  | 'pre-type'
+  | 'pre-type' // TODO: Remove support, does not meet Conventional Commits 1.0.0
   | 'pre-description'
   | 'post-description'
   | 'post-body';
@@ -76,35 +77,38 @@ function generateChoices(types: Types) {
 }
 
 function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
+  const mergedOptions = {
+    ...DefaultEngineOptions,
+    ...options,
+  };
   const {
+    customScope,
     defaultBody,
     defaultJiraIssue,
     defaultIssues,
     defaultScope,
     defaultType,
-    customScope,
     jiraMode,
     jiraOptional,
     jiraPrefix,
+    maxHeaderWidth,
     scopes,
     skipBreaking,
     skipDescription,
     skipScope,
     types,
-  } = {
-    ...DefaultEngineOptions,
-    ...options,
-  };
+  } = mergedOptions;
   const hasScopes = !!scopes?.length;
   const parsedScopes = customScope ? scopes?.concat(['custom']) : scopes;
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     prompter(
-      inquirer: Inquirer,
+      inquirer: typeof Inquirer,
       commit: (message: string) => void,
       testMode?: boolean
     ) {
+      inquirer.registerPrompt('maxlength-input', MaxLengthInputPrompt);
       inquirer
         .prompt([
           {
@@ -112,16 +116,24 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
             name: 'type',
             message: "Select the type of change that you're committing:",
             choices: generateChoices(types),
-            default: defaultType,
+            ...(defaultType
+              ? {
+                  default: defaultType,
+                }
+              : null),
           },
           {
             type: 'input',
             name: 'jira',
             message: `Enter space separated JIRA issue(s) (${jiraPrefix}-123)${
               jiraOptional ? ' (optional)' : ''
-            }`,
+            }:`,
             when: jiraMode,
-            default: defaultJiraIssue || '',
+            ...(defaultJiraIssue
+              ? {
+                  default: defaultJiraIssue,
+                }
+              : null),
             validate: function (jira) {
               // TODO: Validation doesn't show error feedback
               // TODO: Improve regex to support multiple Jira tickets
@@ -153,6 +165,38 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
             name: 'customScope',
             when: ({scope}) => scope === 'custom',
             message: 'Type custom scope (press enter to skip)',
+          },
+          {
+            type: 'confirm',
+            name: 'isBreaking',
+            when: !skipBreaking,
+            message: 'Are there any breaking changes?',
+            default: false,
+          },
+          {
+            type: 'confirm',
+            name: 'isBreaking',
+            message: 'This will bump the major version, are you sure?',
+            default: false,
+            when: function (answers) {
+              return answers.isBreaking;
+            },
+          },
+          {
+            type: 'maxlength-input',
+            maxLength: maxHeaderWidth,
+            message:
+              'Write a short, imperative tense description of the change:\n',
+            name: 'subject',
+            filter: (subject: string, answers: PromptAnswers) => {
+              return getTitle({...answers, subject}, mergedOptions);
+            },
+            transformer: (subject, answers) => {
+              return (
+                chalk.blue(getTitle({...answers, subject: ''}, mergedOptions)) +
+                subject
+              );
+            },
           },
           // {
           //   type: 'limitedInput',
@@ -196,22 +240,6 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
             default: defaultBody,
           },
           {
-            type: 'confirm',
-            name: 'isBreaking',
-            when: !skipBreaking,
-            message: 'Are there any breaking changes?',
-            default: false,
-          },
-          {
-            type: 'confirm',
-            name: 'isBreaking',
-            message: 'This will bump the major version, are you sure?',
-            default: false,
-            when: function (answers) {
-              return answers.isBreaking;
-            },
-          },
-          {
             type: 'input',
             name: 'breaking',
             message: 'Describe the breaking changes:\n',
@@ -251,7 +279,13 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
           },
         ])
         .then(async (answers: PromptAnswers) => {
-          console.log('answers', answers);
+          const commitMessage = commitGenerator(answers, mergedOptions);
+
+          console.log();
+          console.log(chalk.underline('Commit preview:'));
+          console.log(
+            boxen(chalk.green(commitMessage), {padding: 1, margin: 1})
+          );
         })
         .catch(e => {
           // TODO: Understand if this can throw an error and what we should do with it.

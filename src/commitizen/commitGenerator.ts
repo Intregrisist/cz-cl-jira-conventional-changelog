@@ -56,7 +56,10 @@ const getTypeWithScope = (answers: PromptAnswers): string => {
  * @param {EngineOptions} options
  * @returns {string}
  */
-const getTitle = (answers: PromptAnswers, options: EngineOptions): string => {
+export const getTitle = (
+  answers: PromptAnswers,
+  options: EngineOptions
+): string => {
   const {subject} = answers;
   const {jiraLocation} = options;
   const jiraIssue = getJiraIssue(answers, options);
