@@ -4,8 +4,11 @@ import MaxLengthInputPrompt from 'inquirer-maxlength-input-prompt';
 import map from 'lodash/map';
 import reduce from 'lodash/reduce';
 import padEnd from 'lodash/padEnd';
+import padStart from 'lodash/padStart';
+import mapValues from 'lodash/mapValues';
 import chalk from 'chalk';
 import boxen from 'boxen';
+import {execSync} from 'child_process';
 
 import {DefaultEngineOptions} from './constants';
 import {Types} from './types';
@@ -26,7 +29,7 @@ export type EngineOptions = {
   defaultType?: string;
   types: Types;
   // jira
-  defaultJiraIssue?: string;
+  defaultJiraIssue?: string; // TODO: Remove since this is always changing
   jiraOptional?: boolean;
   jiraPrefix?: string;
   jiraMode?: boolean;
@@ -76,6 +79,14 @@ function generateChoices(types: Types) {
   }));
 }
 
+function getJiraIssueFromBranchName() {
+  const branchName = execSync('git branch --show-current').toString().trim();
+  const jiraIssueRegex =
+    /(?<jiraIssue>(?<!([a-zA-Z0-9]{1,10})-?)[a-zA-Z0-9]+-\d+)/;
+  const matchResult = branchName.match(jiraIssueRegex);
+  return matchResult?.groups?.jiraIssue || '';
+}
+
 function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
   const mergedOptions = {
     ...DefaultEngineOptions,
@@ -84,7 +95,6 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
   const {
     customScope,
     defaultBody,
-    defaultJiraIssue,
     defaultIssues,
     defaultScope,
     defaultType,
@@ -100,14 +110,11 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
   } = mergedOptions;
   const hasScopes = !!scopes?.length;
   const parsedScopes = customScope ? scopes?.concat(['custom']) : scopes;
+  const defaultJiraIssue = getJiraIssueFromBranchName();
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prompter(
-      inquirer: typeof Inquirer,
-      commit: (message: string) => void,
-      testMode?: boolean
-    ) {
+    prompter(inquirer: typeof Inquirer, commit: (message: string) => void) {
       inquirer.registerPrompt('maxlength-input', MaxLengthInputPrompt);
       inquirer
         .prompt([
@@ -125,7 +132,7 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
           {
             type: 'input',
             name: 'jira',
-            message: `Enter space separated JIRA issue(s) (${jiraPrefix}-123)${
+            message: `Enter comma separated JIRA issue(s)${
               jiraOptional ? ' (optional)' : ''
             }:`,
             when: jiraMode,
@@ -134,13 +141,21 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
                   default: defaultJiraIssue,
                 }
               : null),
-            validate: function (jira) {
+            validate: function (jira: string) {
               // TODO: Validation doesn't show error feedback
               // TODO: Improve regex to support multiple Jira tickets
-              return (
-                (jiraOptional && !jira) ||
-                /^(?<!([a-zA-Z0-9]{1,10})-?)[a-zA-Z0-9]+-\d+$/.test(jira)
-              );
+              if (jiraOptional && !jira) {
+                return true;
+              }
+              if (!jira) {
+                return 'At least one Jira issue is required.';
+              }
+              const isValid = jira
+                .split(/,?\s+/)
+                .every(jira =>
+                  /^(?<!([a-zA-Z0-9]{1,10})-?)[a-zA-Z0-9]+-\d+$/.test(jira)
+                );
+              return isValid || 'Invalid Jira issue.';
             },
             filter: function (jira) {
               return jira.toUpperCase();
@@ -189,7 +204,9 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
               'Write a short, imperative tense description of the change:\n',
             name: 'subject',
             filter: (subject: string, answers: PromptAnswers) => {
-              return getTitle({...answers, subject}, mergedOptions);
+              const leftPadLength =
+                getTitle({...answers, subject: ''}, mergedOptions).length + 1;
+              return padStart(subject, leftPadLength + subject.length + 1, ' ');
             },
             transformer: (subject, answers) => {
               return (
@@ -198,39 +215,6 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
               );
             },
           },
-          // {
-          //   type: 'limitedInput',
-          //   name: 'subject',
-          //   message:
-          //     'Write a short, imperative tense description of the change:',
-          //   default: options.defaultSubject,
-          //   maxLength: maxHeaderWidth - (options.exclamationMark ? 1 : 0),
-          //   leadingLabel: answers => {
-          //     let scope = '';
-          //     const providedScope = getProvidedScope(answers);
-          //     if (providedScope && providedScope !== 'none') {
-          //       scope = `(${providedScope})`;
-          //     }
-          //
-          //     const jiraWithDecorators = decorateJiraIssue(
-          //       answers.jira,
-          //       options
-          //     );
-          //     return getJiraIssueLocation(
-          //       options.jiraLocation,
-          //       answers.type,
-          //       scope,
-          //       jiraWithDecorators,
-          //       ''
-          //     ).trim();
-          //   },
-          //   validate: input =>
-          //     input.length >= minHeaderWidth ||
-          //     `The subject must have at least ${minHeaderWidth} characters`,
-          //   filter: function (subject) {
-          //     return filterSubject(subject);
-          //   },
-          // },
           {
             type: 'input',
             name: 'body',
@@ -278,7 +262,10 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
             default: defaultIssues ? defaultIssues : undefined,
           },
         ])
-        .then(async (answers: PromptAnswers) => {
+        .then(async (rawAnswers: PromptAnswers) => {
+          const answers = mapValues(rawAnswers, answer =>
+            typeof answer === 'string' ? answer.trim() : answer
+          ) as PromptAnswers;
           const commitMessage = commitGenerator(answers, mergedOptions);
 
           console.log();
@@ -288,7 +275,7 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
           );
         })
         .catch(e => {
-          // TODO: Understand if this can throw an error and what we should do with it.
+          // TODO: Understand if this can throw an error and what we should do with it
           console.log(e);
         });
     },
