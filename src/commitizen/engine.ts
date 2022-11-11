@@ -273,6 +273,18 @@ function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {
           console.log(
             boxen(chalk.green(commitMessage), {padding: 1, margin: 1})
           );
+
+          const {doCommit} = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'doCommit',
+              message: 'Commit?',
+            },
+          ]);
+
+          if (doCommit) {
+            commit(commitMessage);
+          }
         })
         .catch(e => {
           // TODO: Understand if this can throw an error and what we should do with it
