@@ -1,7 +1,9 @@
 import compact from 'lodash/compact';
 import wrap from 'word-wrap';
-import {EngineOptions, PromptAnswers} from './engine';
-import {DefaultWrapOptions} from './constants';
+
+import {EngineOptions} from '../engine';
+import {DefaultWrapOptions} from '../constants';
+import {Answers} from './createQuestions';
 
 /**
  * Returns options top be used with 'word-wrap' library
@@ -22,14 +24,11 @@ const getWrapOptions = (options: EngineOptions): wrap.IOptions => {
 
 /**
  * Fetches formatted Jira issue
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {string}
  */
-const getJiraIssue = (
-  answers: PromptAnswers,
-  options: EngineOptions
-): string => {
+const getJiraIssue = (answers: Answers, options: EngineOptions): string => {
   const {jira} = answers;
   const {jiraPrepend = '', jiraAppend = ''} = options;
   return jira ? `${jiraPrepend}${jira}${jiraAppend}` : '';
@@ -37,10 +36,10 @@ const getJiraIssue = (
 
 /**
  * Returns formatted type with optional scope, adds breaking flag as well.
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @returns {string}
  */
-const getTypeWithScope = (answers: PromptAnswers): string => {
+const getTypeWithScope = (answers: Answers): string => {
   const {customScope, isBreaking, scope: selectedScope, type} = answers;
   const scope = customScope || selectedScope;
   const breakFlag = isBreaking ? '!' : '';
@@ -52,14 +51,11 @@ const getTypeWithScope = (answers: PromptAnswers): string => {
 
 /**
  * Generates the commit message title
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {string}
  */
-export const getTitle = (
-  answers: PromptAnswers,
-  options: EngineOptions
-): string => {
+export const getTitle = (answers: Answers, options: EngineOptions): string => {
   const {subject} = answers;
   const {jiraLocation} = options;
   const jiraIssue = getJiraIssue(answers, options);
@@ -82,11 +78,11 @@ export const getTitle = (
 
 /**
  * Generates the commit message body
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {string}
  */
-const getBody = (answers: PromptAnswers, options: EngineOptions): string => {
+const getBody = (answers: Answers, options: EngineOptions): string => {
   const {body = ''} = answers;
   const {jiraLocation} = options;
   const jiraIssue = getJiraIssue(answers, options);
@@ -99,14 +95,11 @@ const getBody = (answers: PromptAnswers, options: EngineOptions): string => {
 
 /**
  * Generates the breaking description of the commit message body
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {string}
  */
-const getBreaking = (
-  answers: PromptAnswers,
-  options: EngineOptions
-): string => {
+const getBreaking = (answers: Answers, options: EngineOptions): string => {
   const {breaking: rawBreaking} = answers;
   const breaking = rawBreaking?.replace(/^BREAKING CHANGE: /, '');
   if (!breaking) {
@@ -117,22 +110,22 @@ const getBreaking = (
 
 /**
  * Generates the issues of the commit message body
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {string}
  */
-const getIssues = (answers: PromptAnswers, options: EngineOptions): string => {
+const getIssues = (answers: Answers, options: EngineOptions): string => {
   const {issues = ''} = answers;
   return wrap(issues, getWrapOptions(options));
 };
 
 /**
  * Generates a complete Conventional Commit message
- * @param {PromptAnswers} answers
+ * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {any}
  */
-const commitGenerator = (answers: PromptAnswers, options: EngineOptions) => {
+const createCommitMessage = (answers: Answers, options: EngineOptions) => {
   const title = getTitle(answers, options);
   const body = getBody(answers, options);
   const breaking = getBreaking(answers, options);
@@ -140,4 +133,4 @@ const commitGenerator = (answers: PromptAnswers, options: EngineOptions) => {
   return compact([title, body, breaking, issues]).join('\n\n');
 };
 
-export default commitGenerator;
+export default createCommitMessage;

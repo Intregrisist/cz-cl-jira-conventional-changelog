@@ -1,7 +1,8 @@
 import {describe, expect, test} from '@jest/globals';
 
-import commitGenerator from '../commitGenerator';
-import {EngineOptions, JiraLocation, PromptAnswers} from '../engine';
+import createCommitMessage from '../utils/createCommitMessage';
+import {Answers} from '../utils/createQuestions';
+import {EngineOptions, JiraLocation} from '../engine';
 import {Types} from '../types';
 
 const testTypes: Types = {
@@ -17,10 +18,10 @@ const baseOptions: EngineOptions = {
   types: testTypes,
 };
 
-describe('commitGenerator()', () => {
+describe('createCommitMessage()', () => {
   describe('title', () => {
     describe('without Jira issue', () => {
-      test.each<[string, PromptAnswers, string]>([
+      test.each<[string, Answers, string]>([
         ['subject, type', {subject: 'subject', type: 'type'}, 'type: subject'],
         [
           'isBreaking, subject, type',
@@ -43,7 +44,7 @@ describe('commitGenerator()', () => {
           'type(customScope): subject',
         ],
       ])('with: %s', (name, answers, expected) => {
-        expect(commitGenerator(answers, baseOptions)).toBe(expected);
+        expect(createCommitMessage(answers, baseOptions)).toBe(expected);
       });
     });
 
@@ -56,7 +57,7 @@ describe('commitGenerator()', () => {
         ['post-body', 'type: subject\n\nTEST-123'],
       ])('location %s', (jiraLocation, expected) => {
         expect(
-          commitGenerator(
+          createCommitMessage(
             {
               jira: 'TEST-123',
               subject: 'subject',

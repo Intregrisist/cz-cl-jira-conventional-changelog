@@ -20,7 +20,6 @@ export const DefaultEngineOptions: EngineOptions = {
   maxHeaderWidth: 72,
   // minHeaderWidth: 2,
   maxBodyWidth: 100,
-  jiraPrefix: 'JIRA',
   jiraOptional: false,
   // jiraLocation: 'pre-description',
   // jiraPrepend: '',
