@@ -1,12 +1,13 @@
 // eslint-disable-next-line node/no-extraneous-import
 import {QuestionCollection} from 'inquirer';
+import find from 'lodash/find';
 import padStart from 'lodash/padStart';
 import chalk from 'chalk';
 import {execSync} from 'child_process';
 
 import {getTitle} from './createCommitMessage';
 import {EngineOptions} from '../engine';
-import createChoices from '../helpers/createChoices';
+import createChoices from './createChoices';
 
 export type Answers = {
   type: string;
@@ -45,7 +46,12 @@ const createQuestions = (
     : options.scopes;
   const defaultJiraIssue = getJiraIssueFromBranchName();
   const isDefaultTypeValid =
-    !!options.defaultType && !!options.types[options.defaultType];
+    options.defaultType &&
+    !!find(options.types, ['value', options.defaultType]);
+  const isDefaultScopeValid =
+    options.defaultScope &&
+    options.scopes &&
+    !!find(options.scopes, ['value', options.defaultScope]);
 
   return [
     {
@@ -63,8 +69,11 @@ const createQuestions = (
       message:
         'What is the scope of this change (e.g. component or file name): ' +
         (hasScopes ? '(select from the list)' : '(press enter to skip)'),
-      // TODO: If hasScope then the defaultScope must be part of the scopes.
-      default: options.defaultScope,
+      default: hasScopes
+        ? isDefaultScopeValid
+          ? options.defaultScope
+          : undefined
+        : options.defaultScope,
       filter: value => value.trim().toLowerCase(),
     },
     {

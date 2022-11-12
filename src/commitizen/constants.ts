@@ -1,5 +1,5 @@
 import wrap from 'word-wrap';
-import types from './types';
+import {typeOptionsWithoutTitle} from './typeOptions';
 import {EngineOptions} from './engine';
 
 export const DefaultWrapOptions: wrap.IOptions = {
@@ -11,7 +11,7 @@ export const DefaultWrapOptions: wrap.IOptions = {
 } as const;
 
 export const DefaultEngineOptions: EngineOptions = {
-  types,
+  types: typeOptionsWithoutTitle,
   jiraMode: true,
   skipScope: true,
   skipDescription: false,

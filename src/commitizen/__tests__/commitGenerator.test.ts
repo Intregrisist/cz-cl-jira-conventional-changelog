@@ -3,7 +3,7 @@ import {describe, expect, test} from '@jest/globals';
 import createCommitMessage from '../utils/createCommitMessage';
 import {Answers} from '../utils/createQuestions';
 import {EngineOptions, JiraLocation} from '../engine';
-import {Types} from '../types';
+import {Types} from '../typeOptions';
 
 const testTypes: Types = {
   test: {

@@ -6,9 +6,9 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 
 import {DefaultEngineOptions} from './constants';
-import {Types} from './types';
 import createCommitMessage from './utils/createCommitMessage';
 import createQuestions, {Answers} from './utils/createQuestions';
+import {ChoiceOptions} from './utils/createChoices';
 
 export type JiraLocation =
   | 'pre-type' // TODO: Remove support, does not meet Conventional Commits 1.0.0
@@ -23,7 +23,7 @@ export type EngineOptions = {
 
   // type
   defaultType?: string;
-  types: Types;
+  types: ChoiceOptions;
   // jira
   defaultJiraIssue?: string; // TODO: Remove since this is always changing
   jiraOptional?: boolean;

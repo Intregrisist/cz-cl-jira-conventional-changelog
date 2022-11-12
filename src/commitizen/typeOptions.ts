@@ -1,50 +1,58 @@
-export type Type = {
-  description: string;
-  title: string;
-};
+import map from 'lodash/map';
+import omit from 'lodash/omit';
+import {ChoiceOptions} from './utils/createChoices';
 
-export type Types = Record<string, Type>;
-
-const types: Record<string, Type> = {
-  feat: {
+export const typeOptionsWithTitle: ChoiceOptions = [
+  {
     description: 'A new feature',
     title: 'Features',
+    value: 'feat',
   },
-  fix: {
+  {
     description: 'A bug fix',
     title: 'Bug Fixes',
+    value: 'fix',
   },
-  docs: {
+  {
     description: 'Documentation only changes',
     title: 'Documentation',
+    value: 'docs',
   },
-  refactor: {
+  {
     description:
       'A code change that neither fixes a bug nor adds a feature (formatting, performance improvement, etc)',
     title: 'Code Refactoring',
+    value: 'refactor',
   },
-  test: {
+  {
     description: 'Adding missing tests or correcting existing tests',
     title: 'Tests',
+    value: 'test',
   },
-  build: {
+  {
     description:
       'Changes that affect the build system or external dependencies (npm, webpack, typescript)',
     title: 'Builds',
+    value: 'build',
   },
-  ci: {
+  {
     description:
       'Changes to our CI configuration files and scripts (NOTE: Does not bump the version)',
     title: 'Continuous Integrations',
+    value: 'ci',
   },
-  chore: {
+  {
     description: "Other changes that don't modify src or test files",
     title: 'Chores',
+    value: 'chore',
   },
-  revert: {
+  {
     description: 'Reverts a previous commit',
     title: 'Reverts',
+    value: 'revert',
   },
-} as const;
+];
 
-export default types;
+export const typeOptionsWithoutTitle = map(typeOptionsWithTitle, option =>
+  omit(option, ['title'])
+);
