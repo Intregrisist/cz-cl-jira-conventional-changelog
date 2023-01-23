@@ -45,22 +45,22 @@ const getTypeWithScope = (answers: Answers): string => {
  * @returns {string}
  */
 export const getTitle = (answers: Answers, options: EngineOptions): string => {
-  const {jiraIssues = '', subject = ''} = answers;
+  const {jiraIssues = '', description = ''} = answers;
   const {jiraLocation} = options;
   const typeWithScope = getTypeWithScope(answers);
 
   if (jiraLocation === 'pre-type') {
-    return `${jiraIssues} ${typeWithScope}: ${subject}`;
+    return `${jiraIssues} ${typeWithScope}: ${description}`;
   } else if (jiraLocation === 'pre-description') {
-    return `${typeWithScope}: ${jiraIssues} ${subject}`;
+    return `${typeWithScope}: ${jiraIssues} ${description}`;
   } else if (jiraLocation === 'post-description') {
-    return `${typeWithScope}: ${subject} ${jiraIssues}`;
+    return `${typeWithScope}: ${description} ${jiraIssues}`;
   } else if (jiraLocation === 'post-body') {
-    return `${typeWithScope}: ${subject}`;
+    return `${typeWithScope}: ${description}`;
   } else if (jiraIssues) {
-    return `${typeWithScope}: ${jiraIssues} ${subject}`;
+    return `${typeWithScope}: ${jiraIssues} ${description}`;
   } else {
-    return `${typeWithScope}: ${subject}`;
+    return `${typeWithScope}: ${description}`;
   }
 };
 

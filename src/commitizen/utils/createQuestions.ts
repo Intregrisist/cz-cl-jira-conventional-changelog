@@ -21,7 +21,7 @@ export type Answers = {
   isIssueAffected?: boolean;
   issuesBody?: string;
   issues?: string;
-  subject: string;
+  description: string;
 };
 
 const createQuestions = (
@@ -102,11 +102,11 @@ const createQuestions = (
       message: 'Write a short, imperative tense description of the change:\n',
       filter: (subject: string, answers) => {
         const leftPadLength =
-          getTitle({...answers, subject: ''}, options).length + 1;
+          getTitle({...answers, description: ''}, options).length + 1;
         return padStart(subject, leftPadLength + subject.length + 1, ' ');
       },
       transformer: (subject, answers) =>
-        chalk.blue(getTitle({...answers, subject: ''}, options)) + subject,
+        chalk.blue(getTitle({...answers, description: ''}, options)) + subject,
     },
     {
       type: 'input',

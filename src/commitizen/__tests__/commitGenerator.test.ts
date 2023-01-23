@@ -23,15 +23,19 @@ describe('createCommitMessage()', () => {
   describe('title', () => {
     describe('without Jira issue', () => {
       test.each<[string, Answers, string]>([
-        ['subject, type', {subject: 'subject', type: 'type'}, 'type: subject'],
+        [
+          'subject, type',
+          {description: 'subject', type: 'type'},
+          'type: subject',
+        ],
         [
           'isBreaking, subject, type',
-          {isBreaking: true, subject: 'subject', type: 'type'},
+          {isBreaking: true, description: 'subject', type: 'type'},
           'type!: subject',
         ],
         [
           'scope, subject, type',
-          {scope: 'scope', subject: 'subject', type: 'type'},
+          {scope: 'scope', description: 'subject', type: 'type'},
           'type(scope): subject',
         ],
         [
@@ -39,7 +43,7 @@ describe('createCommitMessage()', () => {
           {
             customScope: 'customScope',
             scope: 'scope',
-            subject: 'subject',
+            description: 'subject',
             type: 'type',
           },
           'type(customScope): subject',
@@ -61,7 +65,7 @@ describe('createCommitMessage()', () => {
           createCommitMessage(
             {
               jira: 'TEST-123',
-              subject: 'subject',
+              description: 'subject',
               type: 'type',
             },
             {...baseOptions, jiraLocation}
