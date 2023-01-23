@@ -8,7 +8,7 @@ import boxen from 'boxen';
 import {DefaultEngineOptions} from './constants';
 import createCommitMessage from './utils/createCommitMessage';
 import createQuestions, {Answers} from './utils/createQuestions';
-import {ChoiceOptions} from './utils/createChoices';
+import {ListChoices} from './utils/createOptionalListQuestion';
 
 export type JiraLocation =
   | 'pre-type' // TODO: Remove support, does not meet Conventional Commits 1.0.0
@@ -16,25 +16,37 @@ export type JiraLocation =
   | 'post-description'
   | 'post-body';
 
+export type FooterQuestion = {
+  message: string;
+  token: string;
+  required?: boolean;
+};
+
+export type FooterQuestions = FooterQuestion[];
+
 export type EngineOptions = {
+  // Additional footer questions
+  additionalFooter?: FooterQuestions;
+
   // other
   maxHeaderWidth: number;
   maxBodyWidth: number;
+  // TODO: Support additional footers
+  // additionalFooters: string[];
 
   // type
   defaultType?: string;
-  types: ChoiceOptions;
+  types: ListChoices;
   // jira
   defaultJiraIssue?: string; // TODO: Remove since this is always changing
   jiraOptional?: boolean;
-  jiraMode?: boolean;
   jiraPrepend?: string;
   jiraAppend?: string;
   jiraLocation?: JiraLocation;
   // scope
   customScope?: boolean;
   defaultScope?: string;
-  scopes?: string[]; // Support one with description and title.
+  scopes?: ListChoices;
   skipScope?: boolean;
   // subject
   exclamationMark?: boolean;
@@ -46,6 +58,18 @@ export type EngineOptions = {
   skipBreaking?: boolean;
   // isIssueAffected, issues
   defaultIssues?: string;
+
+  /**
+   * Configuration
+   **/
+
+  /**
+   * List Choices
+   **/
+
+  /**
+   * Defaults
+   **/
 };
 
 function engine(options: Partial<EngineOptions> = DefaultEngineOptions) {

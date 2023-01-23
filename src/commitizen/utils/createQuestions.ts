@@ -1,160 +1,136 @@
 // eslint-disable-next-line node/no-extraneous-import
 import {QuestionCollection} from 'inquirer';
-import find from 'lodash/find';
 import padStart from 'lodash/padStart';
+import map from 'lodash/map';
 import chalk from 'chalk';
-import {execSync} from 'child_process';
 
 import {getTitle} from './createCommitMessage';
 import {EngineOptions} from '../engine';
-import createChoices from './createChoices';
+import {SCOPE_CUSTOM_OPTION, SCOPE_SKIP_OPTION} from '../constants';
+import createOptionalListQuestion from './createOptionalListQuestion';
+import getJiraIssueFromBranchName from './getJiraIssueFromBranchName';
 
 export type Answers = {
   type: string;
-  jira?: string;
+  jiraIssues?: string;
   scope?: string;
   customScope?: string;
   body?: string;
   isBreaking?: boolean;
-  breaking?: string;
+  breakingBody?: string;
   isIssueAffected?: boolean;
   issuesBody?: string;
   issues?: string;
   subject: string;
 };
 
-const getJiraIssueFromBranchName = () => {
-  const branchName = execSync('git branch --show-current').toString().trim();
-  const jiraIssueRegex =
-    /(?<jiraIssue>(?<!([a-zA-Z0-9]{1,10})-?)[a-zA-Z0-9]+-\d+)/;
-  const matchResult = branchName.match(jiraIssueRegex);
-  return matchResult?.groups?.jiraIssue || '';
-};
-
-const defaultOption = <T>(value?: T) => {
-  const isBoolean = typeof value === 'boolean';
-  const shouldDefault = isBoolean || !!value;
-  return shouldDefault ? {default: value} : null;
-};
-
 const createQuestions = (
   options: EngineOptions
 ): QuestionCollection<Answers> => {
-  const hasScopes = !!options.scopes?.length;
-  const scopes = options.customScope
-    ? options.scopes?.concat(['custom'])
-    : options.scopes;
-  const defaultJiraIssue = getJiraIssueFromBranchName();
-  const isDefaultTypeValid =
-    options.defaultType &&
-    !!find(options.types, ['value', options.defaultType]);
-  const isDefaultScopeValid =
-    options.defaultScope &&
-    options.scopes &&
-    !!find(options.scopes, ['value', options.defaultScope]);
-
   return [
-    {
-      type: 'list',
+    createOptionalListQuestion<Answers>({
       name: 'type',
       message: "Select the type of change that you're committing:",
-      choices: createChoices(options.types),
-      default: isDefaultTypeValid ? options.defaultType : undefined,
-    },
-    {
-      type: hasScopes ? 'list' : 'input',
+      listChoices: options.types,
+      default: options.defaultType,
+    }),
+    createOptionalListQuestion<Answers>({
       name: 'scope',
-      when: !options.skipScope,
-      choices: hasScopes ? scopes : undefined,
-      message:
-        'What is the scope of this change (e.g. component or file name): ' +
-        (hasScopes ? '(select from the list)' : '(press enter to skip)'),
-      default: hasScopes
-        ? isDefaultScopeValid
-          ? options.defaultScope
-          : undefined
-        : options.defaultScope,
+      listChoices: options.scopes,
+      listAdditionalChoices: [SCOPE_CUSTOM_OPTION, SCOPE_SKIP_OPTION],
+      default: options.defaultScope,
+      message: hasList =>
+        [
+          'What is the scope of this change',
+          hasList
+            ? ':'
+            : ' (e.g. component or file name): (press enter to skip)',
+        ].join(''),
       filter: value => value.trim().toLowerCase(),
-    },
+    }),
     {
-      type: 'input',
       name: 'customScope',
-      when: ({scope}) => scope === 'custom',
-      message: 'Type custom scope (press enter to skip)',
+      type: 'input',
+      when: ({scope}) => scope === SCOPE_CUSTOM_OPTION.value,
+      message:
+        'Enter a scope for this change (e.g. component or file name): (press enter to skip)',
     },
     {
+      // TODO: Add limit to make sure not too many Jira issues are being added
+      name: 'jiraIssues',
       type: 'input',
-      name: 'jira',
-      message: `Enter comma separated JIRA issue(s)${
-        options.jiraOptional ? ' (optional)' : ''
-      }:`,
-      when: options.jiraMode,
-      default: defaultJiraIssue || undefined,
-      validate: function (jira: string) {
-        // TODO: Validation doesn't show error feedback
-        // TODO: Improve regex to support multiple Jira tickets
-        if (options.jiraOptional && !jira) {
+      message: [
+        'Enter comma separated JIRA issue(s)',
+        options.jiraOptional ? ' (optional):' : ':',
+      ].join(''),
+      default: getJiraIssueFromBranchName(),
+      validate: (jiraIssues: string) => {
+        if (options.jiraOptional && !jiraIssues) {
           return true;
         }
-        if (!jira) {
+        if (!jiraIssues) {
           return 'At least one Jira issue is required.';
         }
-        const isValid = jira
-          .split(/,?\s+/)
-          .every(jira =>
-            /^(?<!([a-zA-Z0-9]{1,10})-?)[a-zA-Z0-9]+-\d+$/.test(jira)
-          );
-        return isValid || 'Invalid Jira issue.';
+        const invalidJiraIssues = jiraIssues.split(/[,\s]+/).filter(jira => {
+          return !/^(?<!([a-zA-Z0-9]{1,10})-?)[a-zA-Z0-9]+-\d+$/.test(jira);
+        });
+        return (
+          !invalidJiraIssues.length ||
+          `Invalid Jira issue(s): ${invalidJiraIssues.join(', ')}`
+        );
       },
-      filter: function (jira) {
-        return jira.toUpperCase();
-      },
+      filter: (jiraIssues: string) =>
+        jiraIssues
+          .split(/[,\s]+/)
+          .map(jiraIssue => {
+            const {jiraPrepend = '', jiraAppend = ''} = options;
+            const issueFormatted = jiraIssue.toUpperCase();
+            return `${jiraPrepend}${issueFormatted}${jiraAppend}`;
+          })
+          .join(', '),
     },
     {
       type: 'confirm',
       name: 'isBreaking',
-      when: !options.skipBreaking,
       message: 'Are there any breaking changes?',
       default: false,
     },
     {
       type: 'maxlength-input',
+      name: 'subject',
       maxLength: options.maxHeaderWidth,
       message: 'Write a short, imperative tense description of the change:\n',
-      name: 'subject',
       filter: (subject: string, answers) => {
         const leftPadLength =
           getTitle({...answers, subject: ''}, options).length + 1;
         return padStart(subject, leftPadLength + subject.length + 1, ' ');
       },
-      transformer: (subject, answers) => {
-        return (
-          chalk.blue(getTitle({...answers, subject: ''}, options)) + subject
-        );
-      },
+      transformer: (subject, answers) =>
+        chalk.blue(getTitle({...answers, subject: ''}, options)) + subject,
     },
     {
       type: 'input',
       name: 'body',
-      when: !options.skipDescription,
-      message:
-        'Provide a longer description of the change: (press enter to skip)\n',
-      ...defaultOption(options.defaultBody),
+      message: [
+        'Provide a longer description of the change:',
+        options.defaultBody ? '' : ' (press enter to skip)',
+        '\n',
+      ].join(''),
+      default: options.defaultBody,
     },
     {
       type: 'input',
-      name: 'breaking',
+      name: 'breakingBody',
       message: 'Describe the breaking changes:\n',
-      when: function (answers) {
-        return answers.isBreaking;
-      },
+      when: answers => answers.isBreaking,
+      validate: (breakingBody: string) =>
+        !!breakingBody || 'A description for the breaking changes is required.',
     },
     {
       type: 'confirm',
       name: 'isIssueAffected',
       message: 'Does this change affect any open issues?',
       default: !!options.defaultIssues,
-      when: !options.jiraMode,
     },
     {
       type: 'input',
@@ -168,10 +144,24 @@ const createQuestions = (
     {
       type: 'input',
       name: 'issues',
-      message: 'Add issue references (e.g. "fix #123", "re #123".):\n',
+      message: 'Add issue references (e.g. "fix #123", "re #123"):\n',
       when: answers => answers.isIssueAffected,
-      ...defaultOption(!!options.defaultIssues),
+      default: !!options.defaultIssues,
     },
+    ...map(options.additionalFooter, question => ({
+      type: 'input',
+      name: `footer-${question.token}`,
+      message: [
+        `${question.message}:`,
+        !question.required ? '' : ' (press enter to skip)',
+      ].join(''),
+      validate: (input: string) => {
+        if (question.required && !input.length) {
+          return 'This field is required.';
+        }
+        return true;
+      },
+    })),
   ];
 };
 

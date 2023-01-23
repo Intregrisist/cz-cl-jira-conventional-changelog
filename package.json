@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "A Commitizen and Commitlint adapter for Jira commit messages.",
   "main": "build/index.js",
+  "engines": {
+    "node": ">=12.0.0"
+  },
   "scripts": {
     "test": "jest",
     "lint": "gts lint && prettier --check .",
