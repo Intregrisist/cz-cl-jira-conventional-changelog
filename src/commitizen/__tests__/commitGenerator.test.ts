@@ -2,7 +2,7 @@ import {describe, expect, test} from '@jest/globals';
 
 import createCommitMessage from '../utils/createCommitMessage';
 import {Answers} from '../utils/createQuestions';
-import {EngineOptions, JiraLocation} from '../engine';
+import {EngineOptions, JiraLocation} from '../types';
 import {ListChoices} from '../utils/createOptionalListQuestion';
 
 const testTypes: ListChoices = [
@@ -64,7 +64,7 @@ describe('createCommitMessage()', () => {
         expect(
           createCommitMessage(
             {
-              jira: 'TEST-123',
+              jiraIssues: 'TEST-123',
               description: 'subject',
               type: 'type',
             },

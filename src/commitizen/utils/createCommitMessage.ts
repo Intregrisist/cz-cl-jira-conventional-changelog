@@ -1,10 +1,12 @@
 import compact from 'lodash/compact';
-import get from 'lodash/get';
 import wrap from 'word-wrap';
 
-import {EngineOptions} from '../engine';
-import {DefaultWrapOptions} from '../constants';
-import {Answers} from './createQuestions';
+import type {Answers, EngineOptions} from '../types';
+import {
+  DEFAULT_WRAP_OPTIONS,
+  JIRA_LOCATIONS,
+  SCOPE_ACTION_VALUES,
+} from '../constants';
 
 /**
  * Returns options top be used with 'word-wrap' library
@@ -14,7 +16,7 @@ import {Answers} from './createQuestions';
 const getWrapOptions = (options: EngineOptions): wrap.IOptions => {
   const {maxBodyWidth} = options;
   return {
-    ...DefaultWrapOptions,
+    ...DEFAULT_WRAP_OPTIONS,
     ...(maxBodyWidth
       ? {
           width: maxBodyWidth,
@@ -29,13 +31,13 @@ const getWrapOptions = (options: EngineOptions): wrap.IOptions => {
  * @returns {string}
  */
 const getTypeWithScope = (answers: Answers): string => {
-  const {customScope, isBreaking, scope: selectedScope, type} = answers;
+  const {customScope, scope: selectedScope, type} = answers;
   const scope = customScope || selectedScope;
-  const breakFlag = isBreaking ? '!' : '';
-  if (scope) {
-    return `${type}(${scope})${breakFlag}`;
+  const hasScope = scope && !SCOPE_ACTION_VALUES.includes(scope);
+  if (hasScope) {
+    return `${type}(${scope})`;
   }
-  return `${type}${breakFlag}`;
+  return `${type}`;
 };
 
 /**
@@ -49,13 +51,13 @@ export const getTitle = (answers: Answers, options: EngineOptions): string => {
   const {jiraLocation} = options;
   const typeWithScope = getTypeWithScope(answers);
 
-  if (jiraLocation === 'pre-type') {
+  if (jiraLocation === JIRA_LOCATIONS.PRE_TYPE) {
     return `${jiraIssues} ${typeWithScope}: ${description}`;
-  } else if (jiraLocation === 'pre-description') {
+  } else if (jiraLocation === JIRA_LOCATIONS.PRE_DESCRIPTION) {
     return `${typeWithScope}: ${jiraIssues} ${description}`;
-  } else if (jiraLocation === 'post-description') {
+  } else if (jiraLocation === JIRA_LOCATIONS.POST_DESCRIPTION) {
     return `${typeWithScope}: ${description} ${jiraIssues}`;
-  } else if (jiraLocation === 'post-body') {
+  } else if (jiraLocation === JIRA_LOCATIONS.POST_BODY) {
     return `${typeWithScope}: ${description}`;
   } else if (jiraIssues) {
     return `${typeWithScope}: ${jiraIssues} ${description}`;
@@ -66,13 +68,14 @@ export const getTitle = (answers: Answers, options: EngineOptions): string => {
 
 /**
  * Generates the commit message body
+ *
  * @param {Answers} answers
  * @param {EngineOptions} options
  * @returns {string}
  */
 const getBody = (answers: Answers, options: EngineOptions): string => {
-  const {body = ''} = answers;
-  return wrap(body, getWrapOptions(options));
+  const {body = '', issuesBody = ''} = answers;
+  return wrap(issuesBody || body, getWrapOptions(options));
 };
 
 /**
@@ -90,19 +93,23 @@ const getBreakingBody = (answers: Answers, options: EngineOptions): string => {
   return wrap(`BREAKING CHANGE: ${breakingBody}`, getWrapOptions(options));
 };
 
-const getFooter = (
+type FooterEntry = [string, Answers[keyof Answers]];
+
+const getFooterEntry = (
   answers: Answers,
   key: keyof Answers,
   token: string
-): [string, Answers[keyof Answers]] => {
+): FooterEntry => {
   return [token, answers[key]];
 };
 
 const getFooters = (answers: Answers, options: EngineOptions): string => {
-  const jiraIssuesFooter = getFooter(answers, 'jiraIssues', 'Jira-issues');
-  const issuesFooter = getFooter(answers, 'issues', 'Refs');
-  const objEntries = Object.entries(answers);
-  const additionalFooters = Object.entries(answers).reduce<typeof objEntries>(
+  const {jiraLocation} = options;
+  const isJiraLocationFooter =
+    jiraLocation === JIRA_LOCATIONS.POST_BODY || !jiraLocation;
+  const jiraIssuesFooter = getFooterEntry(answers, 'jiraIssues', 'Jira-issues');
+  const issuesFooter = getFooterEntry(answers, 'issues', 'Refs');
+  const additionalFooters = Object.entries(answers).reduce<FooterEntry[]>(
     (acc, [key, value]) => {
       if (key.startsWith('footer-')) {
         const token = key.replace(/^footer-/, '');
@@ -113,7 +120,13 @@ const getFooters = (answers: Answers, options: EngineOptions): string => {
     []
   );
 
-  return [jiraIssuesFooter, issuesFooter, ...additionalFooters]
+  const footers: FooterEntry[] = [
+    ...(isJiraLocationFooter ? [jiraIssuesFooter] : []),
+    issuesFooter,
+    ...additionalFooters,
+  ];
+
+  return footers
     .reduce<string[]>((acc, [token, value]) => {
       if (value) {
         const tokenEntry = `${token}: ${value}`;

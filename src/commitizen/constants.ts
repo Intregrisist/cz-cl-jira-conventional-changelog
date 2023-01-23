@@ -1,6 +1,5 @@
 import wrap from 'word-wrap';
-// import {typeOptionsWithoutTitle} from './typeOptions';
-import {EngineOptions} from './engine';
+import {EngineOptions} from './types';
 import {ListChoice, ListChoices} from './utils/createOptionalListQuestion';
 import map from 'lodash/map';
 import omit from 'lodash/omit';
@@ -15,7 +14,11 @@ export const SCOPE_SKIP_OPTION: ListChoice = {
   value: '[skip]',
 };
 
-export const DefaultWrapOptions: wrap.IOptions = {
+export const SCOPE_ACTION_VALUES = [SCOPE_CUSTOM_OPTION, SCOPE_SKIP_OPTION].map(
+  choice => choice.value
+);
+
+export const DEFAULT_WRAP_OPTIONS: wrap.IOptions = {
   trim: true,
   cut: false,
   newline: '\n',
@@ -23,7 +26,14 @@ export const DefaultWrapOptions: wrap.IOptions = {
   width: 100,
 } as const;
 
-export const typeOptionsWithTitle: ListChoices = [
+export const JIRA_LOCATIONS = {
+  PRE_TYPE: 'pre-type',
+  PRE_DESCRIPTION: 'pre-description',
+  POST_DESCRIPTION: 'post-description',
+  POST_BODY: 'post-body',
+} as const;
+
+export const TYPE_LIST_CHOICES: ListChoices = [
   {
     description: 'A new feature',
     title: 'Features',
@@ -74,12 +84,13 @@ export const typeOptionsWithTitle: ListChoices = [
   },
 ];
 
-export const typeOptionsWithoutTitle = map(typeOptionsWithTitle, option =>
+// TODO: Why do we need this without the title?
+export const TYPE_LIST_CHOICES_WITHOUT_TITLE = map(TYPE_LIST_CHOICES, option =>
   omit(option, ['title'])
 );
 
 export const DefaultEngineOptions: EngineOptions = {
-  types: typeOptionsWithoutTitle,
+  types: TYPE_LIST_CHOICES_WITHOUT_TITLE,
   skipScope: true,
   skipDescription: false,
   skipBreaking: false,

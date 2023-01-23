@@ -5,24 +5,10 @@ import map from 'lodash/map';
 import chalk from 'chalk';
 
 import {getTitle} from './createCommitMessage';
-import {EngineOptions} from '../engine';
+import type {Answers, EngineOptions} from '../types';
 import {SCOPE_CUSTOM_OPTION, SCOPE_SKIP_OPTION} from '../constants';
 import createOptionalListQuestion from './createOptionalListQuestion';
 import getJiraIssueFromBranchName from './getJiraIssueFromBranchName';
-
-export type Answers = {
-  type: string;
-  jiraIssues?: string;
-  scope?: string;
-  customScope?: string;
-  body?: string;
-  isBreaking?: boolean;
-  breakingBody?: string;
-  isIssueAffected?: boolean;
-  issuesBody?: string;
-  issues?: string;
-  description: string;
-};
 
 const createQuestions = (
   options: EngineOptions
@@ -87,23 +73,22 @@ const createQuestions = (
             const issueFormatted = jiraIssue.toUpperCase();
             return `${jiraPrepend}${issueFormatted}${jiraAppend}`;
           })
+          .filter((v, i, a) => a.indexOf(v) === i)
           .join(', '),
     },
     {
-      type: 'confirm',
-      name: 'isBreaking',
-      message: 'Are there any breaking changes?',
-      default: false,
-    },
-    {
       type: 'maxlength-input',
-      name: 'subject',
+      name: 'description',
       maxLength: options.maxHeaderWidth,
       message: 'Write a short, imperative tense description of the change:\n',
-      filter: (subject: string, answers) => {
+      filter: (description: string, answers) => {
         const leftPadLength =
           getTitle({...answers, description: ''}, options).length + 1;
-        return padStart(subject, leftPadLength + subject.length + 1, ' ');
+        return padStart(
+          description,
+          leftPadLength + description.length + 1,
+          ' '
+        );
       },
       transformer: (subject, answers) =>
         chalk.blue(getTitle({...answers, description: ''}, options)) + subject,
@@ -117,6 +102,12 @@ const createQuestions = (
         '\n',
       ].join(''),
       default: options.defaultBody,
+    },
+    {
+      type: 'confirm',
+      name: 'isBreaking',
+      message: 'Are there any breaking changes?',
+      default: false,
     },
     {
       type: 'input',
